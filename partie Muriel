@@ -1,0 +1,314 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <time.h>
+#include <string.h>
+#ifdef_WIN32
+#include <conio.h>
+#endif
+
+#include "game.h"
+#include "display.h"
+#include "Utils.h"
+
+#define POINTS_PER_CELL 10
+
+/* -------- Helpers items -------- */
+static const char ITEMS[ITEM_COUNT] = { IT_S, IT_F, IT_P, IT_O, IT_M};
+
+static int idx_from_char(char ch){
+	for(int i=0;i<ITEM_COUNT;i++) if (ITEMS[i]==ch) return i;
+	return -1;
+}
+static char random_item(void){
+	return ITEMS[rand()%ITEM_COUNT];
+}
+
+bool game_is_adjacent(int r1,int c1, int r2,int c2){
+	int dr= r1-r2; if(dr<0) dr=-dr;
+	int dc= c1-c2; if(dc<0) dc=-dc;
+	return (dr+dc)==1;
+}
+
+/* -------- Board init (sans matches initiaux) -------- */
+static void fill_board_no_initial_matches(Game *g){
+	for(int r=0;r<ROWS;r++){
+	    for(int c=0;c<COLS;c++){
+	        char ch;
+	        do{
+	           ch= random_item();
+	           /* éviter 3 à l'horizontale/verticale */
+	           if (c>=2 && g->board[r][c-1]==ch) && g->board[r][c-2]==ch) continue;
+	           if (r>=2 && g->board[r-1][c]==ch && g->board[r-2][c]==ch) continue;
+	           break;
+	        }while(1);
+	        g->board[r][c]=ch;
+	    }
+	}
+}
+
+/* -------- Matches /suppression / gravité -------- */
+
+static int mark_runs_and_maybe_explode(Game *g, int mark[ROWS][COLS], int explode_mask[ITEM_COUNT]){
+	int total=0;
+	for(int r=0;r<ROWS;r++) for(int c=0;c<COLS;c++){ mark[r][c]=0; }
+	for(int i=0;i<ITEM_COUNT;i++)explode_mask[i]=0;
+
+	/* horizontaux */
+	for(int r=0;r<ROWS;r++){
+	    int run=1;
+	    for(int c=1;c<=COLS;c++){
+	       if (c<COLS && g->board[r][c]!=IT_EMPTY && g->board[r][c]==g->board[r][c-1]) run++;
+	       else{
+	           if (g->board[r][c-1]!=IT_EMPTY && run>=3){
+	               int idx = idx_from_char(g->board[r][c-1]);
+	               if (run>=6 && idx>=0) explode_mask[idx]=1
+	               for(int k=0;k<run;k++){
+	                    if (!mark[r][c-1-k]){ mark[r][c-1-k]=1; total++; }
+	               }
+	           }
+	           run=1
+	       }
+
+	    }
+	    /* verticaux */
+	    for(int c=0;c<COLS;c++){
+	        int run=1;
+	        for(int r=1;r<=ROWS;r++){
+	            if (r<ROWS && g->board[r][c]!=IT_EMPTY && g->board[r][c]==g->board[r-1][c]) run++;
+	            else{
+	                if (g->board[r-1][c]!=IT_EMPTY && run>=3){
+	                    int idx = idx_from_char(g->board[r-1][c]);
+	                    if (run>=6 && idx>=0) explode_mask[idx]=1;
+	                    for(int k=0;k<run;k++){
+	                        if (!mark[r-1-k][c]){ mark[r-1-k][c]=1 ; total++ ;}	                      
+	                    }
+	                }
+                 run=1;
+	            }
+	        }
+	    }
+/* explosion "6+" : on marque toutes les occurrences */
+for(int i=0;i<ITEM_COUNT;i++) if (explode_mask[i]){
+	char ch = ITEMS[i];
+	for(int r=0;r<ROWS;r++) for(int c=0;c<COLS;c++)
+	    if (g->board[r][c]==ch && !mark[r][c]){ mark[r][c]=1;total++; } 
+	 }
+     return total;
+ }
+
+static void apply_removal_and_gravity_and_refill(Game *g, int mark[ROWS][COLS]){
+	/* compte + effacement */
+	for(int r=0;r<ROWS;r++) for(int c=0;c<COLS;c++){
+	    if (mark[r][c]){
+	        int idx = idx_from_char(g->board[r][c]);
+	        if (idx>=0) g->progress[idx]++;
+	        g->board[r][c]=IT_EMPTY;	        
+	    }
+	}
+/* gravité + refill */
+for(int c=0;c<COLS;c++){
+	int w=ROWS-1;
+	for(int r=ROWS-1;r>=0;r--){
+	    if (g->board[r][c]!=IT_EMPTY){
+	        g->board[w][c]=g->board[r][c]; w--;
+	    }
+	}
+    for(int r=w;r>=0;r--) g->board[r][c]=random_item();
+    }
+}
+
+/* cascade jusqu'à stabilisation; renvoie nb total supprimé */
+static int crush_cascade(Game *g){
+	int total=0, step=0;
+	int mark[ROWS][COLS], explode_mask[ITEM_COUNT];
+	do{
+	   int removed = mark_runs_and_maybe_explode(g, mark, explode_mask);
+	   if(!removed) break;
+	   apply_removal_and_gravity_and_refill(g, mark);
+	   total += removed;
+	   step++;	   
+	}while(1);
+    return total;
+}
+static int try_swap_and_resolve(Game *g, int r1,int c1, int r2, int c2){
+	if (!game_is_adjacent(r1,c1,r2,c2)) return 0;
+	char t=g->board[r1][c1];
+	g->board[r1][c1] = g->board[r1][c1];
+	g->board[r1][c1] = g->board[r2][c2];
+	g->board[r2][c2] = t;
+
+/* Test si le swap crée au moins un match */
+int mark[ROWS[COLS], explode_mask[ITEM_COUNT];
+int created = mark_runs_and_maybe_explode(g, mark, explode_mask);
+if(!created){
+   /* annuler */
+   t = g->board[r1][c1];
+   g->board[r1][c1] = g->board[r2][c2];
+   g->board[r2][c2] = t;
+   return 0;	
+}
+/* sinon on résout complètement */
+apply_removal_and_gravity_and_refill(g, mark);
+int extra = crush_cascade(g);
+return created + extra;
+}
+
+/* -------- Contrats de niveaux ________ */
+static void set_contract_for_level(Game *g, int level){
+    for(int i=0;i<ITEM_COUNT;i++){ g->targets[i]=0; g->progress[i]=0;}
+    g->level = level;
+    if (level==1){
+        g->targets[IDX_F]=20; g->targets[IDX_O]=50; g->targets[IDX_M]=20; 
+        g->moves_left = 30; g->time_limit_sec = 180 ;     
+    } else if (level==2){
+        g->targets[IDX_S]=55; g->targets[IDX_P]=35; g->targets[IDX_F=30;g->targets[IDX_O]=45;
+        g->moves_left = 40; g->time_limit_sec = 210;
+    } else {
+        /* un 3e tableau plus costaud */
+        g->targets[IDX_S]=60; g->targets[IDX_F]=60; g-> targets[IDX_P]=40; g->targets[IDX_O]=50; g->targets[IDX_M]=40;
+        g->moves_left = 50; g->time_limit_sec = 240;
+    }
+}
+
+/* Objectif atteint? */
+static bool contract_completed(Game *g){
+	for(int i=0;i<ITEM_COUNT;i++){
+	    if (g->targets[i]>0 && g->progress[i] < g->targets[i]) return false;
+	}
+    return true;
+}
+
+/* -------- Persistence -------- */
+static void make_save_filename(const char *name, char out[128]){
+	snprint(out, 128, "save_%s.dat" , name);
+}
+int load_progress(const char *player_name,path);
+     char path[128];make_save_filename(player_name,path);
+     FILE *f = fopen(path, "r");
+     if (!f) return 1; /* pas de sauvegarde */
+     int lvl=1; if (fscanf(f, %d , &lvl)!=1) lvl=1;
+     fclose(f);
+     if (lvl<1) lvl=1;
+     return lvl;
+}
+void save_progress(const char *player_name, int next_level){
+	char path[128]; make_save_filename(player_name,path);
+	FILE *f = fopen(path, "w");
+	if (!f) return;
+	if (next_level<1) next_level=1;
+	fprintf(f, "%d\n", next_level);
+	fclose(f);
+}
+
+/* -------- Boucle d'un niveau -------- */
+void game_play_level(Game *g,Player *player, int level){
+	set_contract_for_level(g, level);
+	g->score = 0;
+	g->cursor_row = ROWS/2; g->cursor_col =COLS/2;
+	g->item_selected=false;
+
+	fill_board_no_initial_matches(g);
+	g->level_start = time(NULL);
+
+	while(1){
+	    display_board(g, player);
+
+	    /* temps écoulé ? */
+	    int elapsed = (int)difftime(time(NULL), g->level_start);
+	    if (elapsed >= g->time_limit_sec){
+	        printf("\nTemps écoulé ! Vous perdez une vie.\n");
+	        player->lives--; sleep_ms(1500);
+	        return;
+	    }
+#ifdef _WIN32
+         int key = _getch();
+#else
+         int key = getchar();
+#endif
+         if (key=='x' || key=='X'){/* abandon du niveau */
+             printf("\nVous quittez le niveau.\n");
+             sleep_ms(800);
+             return;
+         }
+
+         int nr=g->cursor_row, nc=g->cursor_col;
+         if (key=='z' || key=='Z'){ nr = (nr>0)? nr-1 : nr; }
+         else if (key=='s' || key=='S') {nr = (nr<ROWS-1)? nr+1 : nr;}
+         else if (key=='q' || key=='Q'){ nc = (nc>0)? nc-1 : nc; }
+         else if (key=='d' || key=='D'){ nc = (nc<COLS-1)? nc+1 : nc; }
+         else if (key==' '){ /* sélection / échange */}
+             if (!g->item_selected){
+                 g->item_selected = true;
+                 g->sel_row = g->cursor_row; g->sel_col = g->cursor_col;
+             }else{
+                 /* si l'utilisateur a re-appuyé sur Espace: désélection */
+                 g->item_selected = false;
+             }
+	 }
+
+/* déplacement du curseur */
+g->cursor_row = nr; g->cursor_col = nc;
+
+/* si sélection active + direction: tenter un swap */
+if (g->item_selected && (key=='z'||key=='s'||key=='S'||key=='q'||key=='Q'||key=='d'||key=='D')){
+	 int r2=g->sel_row, c2=g->sel_col;
+	 if (key=='z'||key=='Z') r2--;
+	 if (key=='s'||key=='S')r2++;
+	 if (key=='q'||key=='Q')c2--;
+	 if (key=='d'||key=='D')c2++;
+
+	 if (r2>=0 && r2<ROWS && c2<COLS){
+	     int gained = try_swap_and_resolve(g, g->sel_row, g->sel_col, r2, c2);
+	     if(gained>0){
+	             int points = gained *POINTS_PER_CELL;
+	         g->score += points;
+	 player->total_score +=points;
+	         g->moves_left--;
+	         g->item_selected=false;
+	         if (contract_completed(g)){
+	             display_board(g, player);
+	             printf("\nContrat rempli !\n");
+	             sleep_ms(1200);
+	             return; /* succès du niveau */ 
+	         }
+             if (g->moves_left<=0){
+             printf("\nNombre de coups dépassé ! Vous perdez une vie.\n");
+                 player->lives--; sleep_ms(1500);
+                 return;
+             }
+	     }else{
+	         /* swap invalide rien ne se passe, on garde la sélection  */
+	         }
+	     }
+     }
+}
+}
+
+/* -------- Enchaînement des niveaux + menu simple -------- */
+void game_play_sequence(Player *player){
+	Game g;
+	int current = player->highest_level;
+	if(current<1) current=1;
+
+	while (player->lives>0){
+	     game_play_level(&g, player, current);
+	     if (player->lives<=0){
+	         printf("\nPlus de vies ! Fin de partie.\n");
+	         sleep_ms(1200);
+	         break;
+	     }
+         /* test succès: contrat complété si on n'a pas perdu de vie et qu'on est revenu sans abandon */
+         if (contrat_completed(&g)){
+             current++;
+             save_progress(player->name, current);
+             printf("Bravo ! Passage au niveau %d (Entrée pour continuer, 'q' pour quitter\n", current);
+             int ch=getchar(); (void)ch;
+         }else{
+             /* perdu ou quitté le niveau*/
+             printf("Rejouer le même niveau ? (o/n) ");
+             int c=getchar();while(getchar()!='\n');
+             if (c=='o'||c=='o') continue;
+             else break;
+         }
+	}
+}
