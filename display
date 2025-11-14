@@ -1,0 +1,19 @@
+#ifndef DISPLAY_H
+#define DISPLAY_H
+
+/* Evite l'inclusion croisée */
+
+typedef struct Game Game;
+typedef struct Player Player;
+
+/Menus/
+
+void display_main_menu(void);
+int get_menu_choice(void);
+void  display_instructions(void);
+void display_highscores(void);
+
+/Ecran Jeu/
+
+void display_board(Game *g, Player *p);
+#endif
