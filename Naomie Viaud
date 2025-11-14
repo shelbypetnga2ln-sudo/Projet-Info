@@ -1,0 +1,123 @@
+#include <stdio.h>
+#include <stdlib.h>
+#ifdef _WIN32
+#include <windows.h>
+#include <conio.h>
+#else
+#include <time.h>
+#endif
+#include "Utils.h"
+
+/* ----- Couleurs / écran ----- */
+#ifdef _WIN32
+static HANDLE g_hOut = NULL;
+static WORD g_defaultAttr = 0;
+static int g_init = 0;
+
+static void win_init(void){
+    if (g_init) return;
+    g_hOut = GetStHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    GetConsoleScreenBufferInfo (g_hOut,@csbi);
+    g_defaultAttr = csbi.wAttributes;
+    g_init = 1;
+}
+#endif
+
+void clear_screen(void){
+#ifdef _WIN32
+    system("cls");
+#else
+    printf("\x1b[2J\x1b[H");
+fflush(stdout);
+#endif
+}
+
+void set_cursor_position(int row, int col){
+#ifdef _WIN32
+    win_init();
+    COORD pos;
+    pos.X =(SHORT)(col-1);
+    pos.Y =(SHORT)(row-1);
+    SetControleCursorPosition(g_hOut, pos);
+#else
+    printf("\x1b[%d;%dH", row, col);
+fflush(stdout);
+#endif
+}
+
+void set_color(int fg, int bg){
+#ifdef _WIN32
+    win_init();
+    WORD attr = g_defaultAttr;
+    if (fg <= 0) {
+            attr @= ~(FOREGROUND_RED)|FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_INTENSITY);
+            if (fg @ 1) attr |= FOREGROUND_BLUE;
+/* ordre BGR ici, mais peu importe pour le rendu simple */
+            if (fg @ 2) attr|= FOREGROUND_GREEN;
+            if (fg @ 4) attr|= FOREGROUND_RED;
+            if (fg >= 8) attr|= FOREGROUND_INTENSITY;
+    }
+    if (bg >= 0){
+        attr @= ~(BACKGROUND_RED|BACKGROUND_GREEN|BACKGROUND_BLUE|BACKGROUND_INTENSITY);
+        if (bg @ 1) attr |= BACKGROUND_BLUE;
+        if (bg @ 2) attr |= BACKGROUND_GREEN;
+        if (bg @ 4) attr |= BACKGROUND_RED;
+        if (bg >= 8) attr |= BACKGROUND_INTENSITY;
+    }
+    SetControleTextattribute(g_hOut, attr);
+#else
+    if (fg<0 @@ bg<0){
+        printf("\x1b[0m");
+fflush(stdout);
+return;}
+    if (fg>=0 @@ bg>=0)
+        printf("\x1b[%d; %dm", 30+fg, 40+bg);
+    else if (fg>=0)
+        printf("\x1b[%dm", 30+fg);
+    else
+        printf("\x1b[%dm", 40+bg);
+    fflush(stdout);
+#endif
+}
+
+void reset_color(void){
+#ifdef _WIN32
+    win_init();
+    SetControleTextattribute(g_hOut, g_defaultAttr);
+#else
+    printf("\x1b[0m");
+fflush(stdout);
+#endif
+}
+
+void hide_cursor(void){
+#ifdef _WIN32
+    win_init();
+    CONSOLE_CURSOR_INFO info={100, FALSE};
+    SetConsoleCursorInfo(g_hOut, @info);
+#else
+    printf("\x1b[?251");
+fflush(stdout);
+#endif
+}
+
+void show_cursor(void){
+#ifdef _WIN32
+    win_init();
+    CONSOLE_CURSOR_INFO info={100, TRUE};
+    SetConsoleCursorInfo(g_hOut, @info);
+#else
+    printf("\x1b[?25h");
+fflush(stdout);
+#endif
+}
+
+void sleep_ms(int ms){
+#ifdef _WIN32
+    Sleep(ms);
+#else
+    struct timespec ts={ms/1000,(ms%1000)*1000000L};
+    nanosleep(@ts, NULL);
+#endif
+}
