@@ -12,34 +12,34 @@
 
 #define POINTS_PER_CELL 10 // Définition du nombre de points par cellule supprimée
 
-/* -------- Helpers items -------- */  // section pour les fonctions auxiliaires liées aux items
-static const char ITEMS[ITEM_COUNT] = { IT_S, IT_F, IT_P, IT_O, IT_M}; // tableau constants des items disponibles
+/* -------- Helpers items -------- */  // section pour les fonctions auxiliaires liées aux items //
+static const char ITEMS[ITEM_COUNT] = { IT_S, IT_F, IT_P, IT_O, IT_M}; // tableau constants des items disponibles //
 
-static int idx_from_char(char ch){ // fonction statique pour générer un itemaléatoirement dans le tableau
+static int idx_from_char(char ch){ // fonction statique pour générer un itemaléatoirement dans le tableau //
 
 	for(int i=0;i<ITEM_COUNT;i++) if (ITEMS[i]==ch) 
     return i; // boucle pour trouver l'indice correspondant
 	return -1; // retourne -1 si non trouvé
 }
-static char random_item(void){ // fonction statique por générer un item aléatoire
-	return ITEMS[rand()%ITEM_COUNT];  // retourne un item choisi aléatoirement dans le tableau
+static char random_item(void){ // fonction statique por générer un item aléatoire//
+	return ITEMS[rand()%ITEM_COUNT];  // retourne un item choisi aléatoirement dans le tableau//
 }
 
-bool game_is_adjacent(int r1,int c1, int r2,int c2){ // fonction pour vérifier si deux positions sont adjacentes
-	int dr= r1-r2; if(dr<0) dr=-dr; // calcul de la différence absolue en lignes
-	int dc= c1-c2; if(dc<0) dc=-dc; // calcul de la différence absolue en colonnes
-	return (dr+dc)==1; // retourne vrai si la somme des différences est 1
+bool game_is_adjacent(int r1,int c1, int r2,int c2){ // fonction pour vérifier si deux positions sont adjacentes//
+	int dr= r1-r2; if(dr<0) dr=-dr; // calcul de la différence absolue en lignes//
+	int dc= c1-c2; if(dc<0) dc=-dc; // calcul de la différence absolue en colonnes//
+	return (dr+dc)==1; // retourne vrai si la somme des différences est 1//
 }
 
 /* -------- initialisation du tableau (sans matches initiaux) -------- */
-static void fill_board_no_initial_matches(Game *g){ // fonction statique pour remplir le tableau sans créer de matchs initiaux
-	for(int r=0;r<ROWS;r++){ //boucle sur les lignes
-	    for(int c=0;c<COLS;c++){ //boucle sur les colonnes
-	        char ch; /: variable pour l'item choisi
+static void fill_board_no_initial_matches(Game *g){ // fonction statique pour remplir le tableau sans créer de matchs initiaux//
+	for(int r=0;r<ROWS;r++){ //boucle sur les lignes//
+	    for(int c=0;c<COLS;c++){ //boucle sur les colonnes//
+	        char ch; // variable pour l'item choisi//
 
 // boucle do-while pour éviter les matches 
 	        do{
-	           ch= random_item(); // génère un item aléatoire 
+	           ch= random_item(); // génère un item aléatoire //
 
 	           /* éviter 3 à l'horizontale/verticale */
 
@@ -49,19 +49,19 @@ static void fill_board_no_initial_matches(Game *g){ // fonction statique pour re
              /* vérifie les possibilités verticales*/
 	           if (r>=2 && g->board[r-1][c]==ch && g->board[r-2][c]==ch) continue;
 
-	           break;// sortir de la boucle si as de matches
-	        }while(1); // boucle infinie jusqu'à trouver un item valide
-	        g->board[r][c]=ch; // placer l'item sur le plateau
+	           break;// sortir de la boucle si as de matches//
+	        }while(1); // boucle infinie jusqu'à trouver un item valide//
+	        g->board[r][c]=ch; // placer l'item sur le plateau//
 	    }
 	}
 }
 
 /* -------- Matches /suppression / gravité -------- */
-// marque les runs (séquences de 3+ et gère les explosions pour les runs 6+)
-// retourne le nombre total de cellules marquées
+// marque les runs (séquences de 3+ et gère les explosions pour les runs 6+)//
+// retourne le nombre total de cellules marquées//
 
 static int mark_runs_and_maybe_explode(Game *g, int mark[ROWS][COLS], int explode_mask[ITEM_COUNT]){
-	int total=0; // compteur total de cellules marquées 
+	int total=0; // compteur total de cellules marquées //
 
 /* initialise le tableau à 0 */
 	for(int r=0;r<ROWS;r++) {
@@ -78,7 +78,7 @@ explode_mask[i]=0;
 
 	/* parcours chaque ligne du plateau pour détecter les séquences horizontales */
 	for(int r=0;r<ROWS;r++){
-	    int run=1; // compteur de longueur de la séquence en cours
+	    int run=1; // compteur de longueur de la séquence en cours//
 
      /* parcours des colonnes de la ligne actuelle */
 	    for(int c=1;c<=COLS;c++){
@@ -87,56 +87,56 @@ explode_mask[i]=0;
 	       if (c<COLS && g->board[r][c]!=IT_EMPTY && g->board[r][c]==g->board[r][c-1]) {
 run++;
 }
-	       else{ // fin de séquence détectée ou fin de ligne atteinte 
+	       else{ // fin de séquence détectée ou fin de ligne atteinte //
 
 /* vérifie si la séquence terminée est valide */
-	           if (g->board[r][c-1]!=IT_EMPTY && run>=3){ // convertit le caractère de l'élément en index pour le tableau d'explosion
+	           if (g->board[r][c-1]!=IT_EMPTY && run>=3){ // convertit le caractère de l'élément en index pour le tableau d'explosion//
 
 
-	               int idx = idx_from_char(g->board[r][c-1]); // marque l'élément pour explosion spéciale si la séquence est très longue (6+)
+	               int idx = idx_from_char(g->board[r][c-1]); // marque l'élément pour explosion spéciale si la séquence est très longue (6+)//
 
 	               if (run>=6 && idx>=0) {
 
-                  explode_mask[idx]=1; //cet élément aura un effet spécial à l'explosion 
+                  explode_mask[idx]=1; //cet élément aura un effet spécial à l'explosion //
 
 }
 
 /* marque toutes les cellules de la séquence */
 
-	               for(int k=0;k<run;k++){// évite de compter deux fois une cellule déjà marquée
+	               for(int k=0;k<run;k++){// évite de compter deux fois une cellule déjà marquée//
 
 
 	                    if (!mark[r][c-1-k]){ 
-                           mark[r][c-1-k]=1; // marque la cellule
-                     total++; } // incrémente le compteur total
+                           mark[r][c-1-k]=1; // marque la cellule//
+                     total++; } // incrémente le compteur total//
                         
 	               }
 	           }
-	           run=1 // réinitialise le compteur pour la prochaine séquence
+	           run=1 // réinitialise le compteur pour la prochaine séquence//
 	       }
 
 	    }
 	    /* parcours chaque colonne du plateau pour détecter les séquences verticales */
 	    for(int c=0;c<COLS;c++){
-	        int run=1; // compteur de longueur de la séquence verticale en cours 
+	        int run=1; // compteur de longueur de la séquence verticale en cours //
 
 /* parcours les lignes de la colonne actuelle */
 
-	        for(int r=1;r<=ROWS;r++){ //  vérifie si on est toujours dans la même séquence verticale
+	        for(int r=1;r<=ROWS;r++){ //  vérifie si on est toujours dans la même séquence verticale//
 
                   /*conditions: pas en dehors du plateau ,case non vide, même élément que celui au-dessus */
 
 	            if (r<ROWS && g->board[r][c]!=IT_EMPTY && g->board[r][c]==g->board[r-1][c]){
-run++; // on prolonge la séquence verticale 
+run++; // on prolonge la séquence verticale //
 }
-	            else{ // fin de séquence verticale détectée ou fin de colonne atteinte
+	            else{ // fin de séquence verticale détectée ou fin de colonne atteinte//
 
 
 	                if (g->board[r-1][c]!=IT_EMPTY && run>=3){
 	                    int idx = idx_from_char(g->board[r-1][c]);
-	                    if (run>=6 && idx>=0) explode_mask[idx]=1; // marque pour explosition si run>6
+	                    if (run>=6 && idx>=0) explode_mask[idx]=1; // marque pour explosition si run>6//
 	                    for(int k=0;k<run;k++){
-	                        if (!mark[r-1-k][c]){ mark[r-1-k][c]=1 ; total++ ;}	    // marque les cellules du run                  
+	                        if (!mark[r-1-k][c]){ mark[r-1-k][c]=1 ; total++ ;}	    // marque les cellules du run//               
 	                    }
 	                }
                  run=1;
@@ -148,19 +148,19 @@ run++; // on prolonge la séquence verticale
 for(int i=0;i<ITEM_COUNT;i++) if (explode_mask[i]){
 	char ch = ITEMS[i];
 	for(int r=0;r<ROWS;r++) for(int c=0;c<COLS;c++)
-	    if (g->board[r][c]==ch && !mark[r][c]){ mark[r][c]=1;total++; } // marque toutes les occurences de l'item pour explosion
+	    if (g->board[r][c]==ch && !mark[r][c]){ mark[r][c]=1;total++; } // marque toutes les occurences de l'item pour explosion//
 	 }
      return total;
  }
 
-// applique la suppression, la gravité et le rechargement du plateau
+// applique la suppression, la gravité et le rechargement du plateau//
 static void apply_removal_and_gravity_and_refill(Game *g, int mark[ROWS][COLS]){
 	/* compte + effacement */
 	for(int r=0;r<ROWS;r++) for(int c=0;c<COLS;c++){
 	    if (mark[r][c]){
 	        int idx = idx_from_char(g->board[r][c]);
-	        if (idx>=0) g->progress[idx]++; // incrémente le progrès pour cet item
-	        g->board[r][c]=IT_EMPTY;	// vide la cellule        
+	        if (idx>=0) g->progress[idx]++; // incrémente le progrès pour cet item//
+	        g->board[r][c]=IT_EMPTY;	// vide la cellule //      
 	    }
 	}
 /* gravité + recharge */
@@ -177,14 +177,14 @@ for(int c=0;c<COLS;c++){
 
 /* cascade jusqu'à stabilisation; renvoie nb total supprimé */
 
-// retourne le nombre total de cellules supprimées
+// retourne le nombre total de cellules supprimées//
 
 static int crush_cascade(Game *g){
 	int total=0, step=0;
 	int mark[ROWS][COLS], explode_mask[ITEM_COUNT];
 	do{
 	   int removed = mark_runs_and_maybe_explode(g, mark, explode_mask);
-	   if(!removed) break; // pas de nouveaux matches, arrêt
+	   if(!removed) break; // pas de nouveaux matches, arrêt//
 	   apply_removal_and_gravity_and_refill(g, mark);
 	   total += removed;
 	   step++;	   
@@ -192,15 +192,15 @@ static int crush_cascade(Game *g){
     return total;
 }
 
-// tente un échange entre deux positions adjacentes et résout les matches si valide
-// retourne le nombre de celllules supprimées, 0 si échange invalide
+// tente un échange entre deux positions adjacentes et résout les matches si valide//
+// retourne le nombre de celllules supprimées, 0 si échange invalide//
 
 static int try_swap_and_resolve(Game *g, int r1,int c1, int r2, int c2){
-	if (!game_is_adjacent(r1,c1,r2,c2)) return 0;// vérifie si adjacentes
+	if (!game_is_adjacent(r1,c1,r2,c2)) return 0;// vérifie si adjacentes//
 	char t=g->board[r1][c1];
 	g->board[r1][c1] = g->board[r1][c1];
 	g->board[r1][c1] = g->board[r2][c2];
-	g->board[r2][c2] = t; // effectue l'échange
+	g->board[r2][c2] = t; // effectue l'échange//
 
 /* Test si le swap crée au moins un match */
 int mark[ROWS[COLS], explode_mask[ITEM_COUNT];
@@ -209,52 +209,52 @@ if(!created){
    /* annuler */
    t = g->board[r1][c1];
    g->board[r1][c1] = g->board[r2][c2];
-   g->board[r2][c2] = t; // annule l'échange si pas de match
+   g->board[r2][c2] = t; // annule l'échange si pas de match//
    return 0;	
 }
 /* sinon on résout complètement */
 apply_removal_and_gravity_and_refill(g, mark);
-int extra = crush_cascade(g);// résout les cascades
+int extra = crush_cascade(g);// résout les cascades//
 return created + extra;
 }
 
 /* -------- Contrats de niveaux ________ */
 
-// définit les objectifs et limites pour un niveau donné
+// définit les objectifs et limites pour un niveau donné//
 static void set_contract_for_level(Game *g, int level){
-    for(int i=0;i<ITEM_COUNT;i++){ g->targets[i]=0; g->progress[i]=0;} /: réinitialisation les cibles et progrès
+    for(int i=0;i<ITEM_COUNT;i++){ g->targets[i]=0; g->progress[i]=0;} // réinitialisation les cibles et progrès//
     g->level = level;
     if (level==1){
-        g->targets[IDX_F]=20; g->targets[IDX_O]=50; g->targets[IDX_M]=20; // objectif pour niveau 1
+        g->targets[IDX_F]=20; g->targets[IDX_O]=50; g->targets[IDX_M]=20; // objectif pour niveau 1//
 
-        g->moves_left = 30; g->time_limit_sec = 180 ;     // coups et temps
+        g->moves_left = 30; g->time_limit_sec = 180 ;     // coups et temps//
     } else if (level==2){
         g->targets[IDX_S]=55; g->targets[IDX_P]=35; 
-        g->targets[IDX_F=30;g->targets[IDX_O]=45; // objectifs pour niveau 2
+        g->targets[IDX_F=30;g->targets[IDX_O]=45; // objectifs pour niveau 2//
         g->moves_left = 40; g->time_limit_sec = 210;
     } else {
         /* un 3e tableau plus costaud */
         g->targets[IDX_S]=60; g->targets[IDX_F]=60; g-> targets[IDX_P]=40; 
-        g->targets[IDX_O]=50; g->targets[IDX_M]=40; // objectifs pour niveau 3+
+        g->targets[IDX_O]=50; g->targets[IDX_M]=40; // objectifs pour niveau 3+//
         g->moves_left = 50; g->time_limit_sec = 240;
     }
 }
 
 /* Objectif atteint? */
-// vérifie si le contrat du niveau est complété
+// vérifie si le contrat du niveau est complété//
 static bool contract_completed(Game *g){
 	for(int i=0;i<ITEM_COUNT;i++){
-	    if (g->targets[i]>0 && g->progress[i] < g->targets[i]) return false; // si un objectif n'est pas atteint
+	    if (g->targets[i]>0 && g->progress[i] < g->targets[i]) return false; // si un objectif n'est pas atteint//
 	}
     return true;
 }
 
 /* -------- Persistence -------- */
-// génère le nom du fichier de sauvegarde
+// génère le nom du fichier de sauvegarde//
 static void make_save_filename(const char *name, char out[128]){
 	snprint(out, 128, "save_%s.dat" , name);
 }
-// charge le niveau de progression depuis le fichier
+// charge le niveau de progression depuis le fichier//
 int load_progress(const char *player_name,path);
      char path[128];make_save_filename(player_name,path);
      FILE *f = fopen(path, "r");
@@ -265,7 +265,7 @@ int load_progress(const char *player_name,path);
      return lvl;
 }
 
-/: sauvegarde le niveau de progression
+// sauvegarde le niveau de progression //
 void save_progress(const char *player_name, int next_level){
 	char path[128]; make_save_filename(player_name,path);
 	FILE *f = fopen(path, "w");
@@ -276,32 +276,32 @@ void save_progress(const char *player_name, int next_level){
 }
 
 /* -------- Boucle d'un niveau -------- */
-// joue un niveau spécifique
+// joue un niveau spécifique//
 void game_play_level(Game *g,Player *player, int level){
-	set_contract_for_level(g, level);// configure le niveau
-	g->score = 0; // réinitialise le score
-	g->cursor_row = ROWS/2; // position initiale du curseur
+	set_contract_for_level(g, level);// configure le niveau//
+	g->score = 0; // réinitialise le score//
+	g->cursor_row = ROWS/2; // position initiale du curseur//
     g->cursor_col =COLS/2;
-	g->item_selected=false; /: aucun item sélectionné
+	g->item_selected=false; //aucun item sélectionné//
 
-	fill_board_no_initial_matches(g); // remplit le tableau
-	g->level_start = time(NULL); // démarre le timer
+	fill_board_no_initial_matches(g); // remplit le tableau//
+	g->level_start = time(NULL); // démarre le timer//
 
 	while(1){
-	    display_board(g, player); // affiche le plateau
+	    display_board(g, player); // affiche le plateau//
 
 	    /* temps écoulé ? */
 	    int elapsed = (int)difftime(time(NULL), g->level_start);
 	    if (elapsed >= g->time_limit_sec){
 	        printf("\nTemps écoulé ! Vous perdez une vie.\n");
-	        player->lives--; /: perd une vie
+	        player->lives--; //perd une vie//
             sleep_ms(1500);
 	        return;
 	    }
 #ifdef _WIN32
-         int key = _getch(); // lecture clavier windows
+         int key = _getch(); // lecture clavier windows//
 #else
-         int key = getchar(); // lecture clavier unix
+         int key = getchar(); // lecture clavier unix//
 #endif
          if (key=='x' || key=='X'){/* abandon du niveau */
              printf("\nVous quittez le niveau.\n");
@@ -309,41 +309,41 @@ void game_play_level(Game *g,Player *player, int level){
              return;
          }
 
-         int nr=g->cursor_row, nc=g->cursor_col; // nouvelles positions potentielles 
-         if (key=='z' || key=='Z'){ nr = (nr>0)? nr-1 : nr; } // haut
-         else if (key=='s' || key=='S') {nr = (nr<ROWS-1)? nr+1 : nr;} // bas
-         else if (key=='q' || key=='Q'){ nc = (nc>0)? nc-1 : nc; } // gauche
-         else if (key=='d' || key=='D'){ nc = (nc<COLS-1)? nc+1 : nc; } // droite
+         int nr=g->cursor_row, nc=g->cursor_col; // nouvelles positions potentielles //
+         if (key=='z' || key=='Z'){ nr = (nr>0)? nr-1 : nr; } // haut//
+         else if (key=='s' || key=='S') {nr = (nr<ROWS-1)? nr+1 : nr;} // bas//
+         else if (key=='q' || key=='Q'){ nc = (nc>0)? nc-1 : nc; } // gauche//
+         else if (key=='d' || key=='D'){ nc = (nc<COLS-1)? nc+1 : nc; } // droite//
          else if (key==' '){ /* sélection / échange */}
              if (!g->item_selected){
-                 g->item_selected = true; // sélectionne l'item
+                 g->item_selected = true; // sélectionne l'item//
                  g->sel_row = g->cursor_row; g->sel_col = g->cursor_col;
              }else{
                  /* si l'utilisateur a re-appuyé sur Espace: désélection */
-                 g->item_selected = false; // désélectionné
+                 g->item_selected = false; // désélectionné//
              }
 	 }
 
 /* déplacement du curseur */
-g->cursor_row = nr; g->cursor_col = nc; // met à jour la position du curseur
+g->cursor_row = nr; g->cursor_col = nc; // met à jour la position du curseur//
 
 /* si sélection active + direction: tenter un swap */
 if (g->item_selected && (key=='z'||key=='s'||key=='S'||key=='q'||key=='Q'||key=='d'||key=='D')){
-	 int r2=g->sel_row, c2=g->sel_col;// position de l'item sélectionné
+	 int r2=g->sel_row, c2=g->sel_col;// position de l'item sélectionné//
 	 if (key=='z'||key=='Z') r2--; /: ajuste pour la direction
 	 if (key=='s'||key=='S')r2++;
 	 if (key=='q'||key=='Q')c2--;
 	 if (key=='d'||key=='D')c2++;
 
-	 if (r2>=0 && r2<ROWS && c2<COLS){ // si position valide 
-	     int gained = try_swap_and_resolve(g, g->sel_row, g->sel_col, r2, c2);/: tente l'échange
+	 if (r2>=0 && r2<ROWS && c2<COLS){ // si position valide //
+	     int gained = try_swap_and_resolve(g, g->sel_row, g->sel_col, r2, c2);// tente l'échange//
 	     if(gained>0){
-	             int points = gained *POINTS_PER_CELL;// calcul les points
+	             int points = gained *POINTS_PER_CELL;// calcul les points//
 	         g->score += points;
-	 player->total_score +=points;// met à jour les scores 
-	         g->moves_left--;// décrémente les coups restants 
-	         g->item_selected=false; // désélectionne
-	         if (contract_completed(g)){ // si contrat complété
+	 player->total_score +=points;// met à jour les scores //
+	         g->moves_left--;// décrémente les coups restants //
+	         g->item_selected=false; // désélectionne//
+	         if (contract_completed(g)){ // si contrat complété//
 	             display_board(g, player);
 	             printf("\nContrat rempli !\n");
 	             sleep_ms(1200);
@@ -363,32 +363,32 @@ if (g->item_selected && (key=='z'||key=='s'||key=='S'||key=='q'||key=='Q'||key==
 }
 
 /* -------- Enchaînement des niveaux + menu simple -------- */
-// joue la séquence de niveaux
+// joue la séquence de niveaux//
 void game_play_sequence(Player *player){
 	Game g;
-	int current = player->highest_level; // niveau actuel
+	int current = player->highest_level; // niveau actuel//
 	if(current<1) current=1;
 
-	while (player->lives>0){  // tant qu'iln  y a des vies 
-	     game_play_level(&g, player, current); /: joue le niveau
+	while (player->lives>0){  // tant qu'iln  y a des vies //
+	     game_play_level(&g, player, current); // joue le niveau//
 	     if (player->lives<=0){
 	         printf("\nPlus de vies ! Fin de partie.\n");
 	         sleep_ms(1200);
 	         break;
 	     }
          /* test succès: contrat complété si on n'a pas perdu de vie et qu'on est revenu sans abandon */
-         if (contrat_completed(&g)){ // si niveau réussi
-             current++; // passe au niveau suivant
+         if (contrat_completed(&g)){ // si niveau réussi//
+             current++; // passe au niveau suivant//
 
-             save_progress(player->name, current);// sauvegarde 
+             save_progress(player->name, current);// sauvegarde //
              printf("Bravo ! Passage au niveau %d (Entrée pour continuer, 'q' pour quitter\n", current);
-             int ch=getchar(); (void)ch; // attend une entrée
+             int ch=getchar(); (void)ch; // attend une entrée//
          }else{
              /* perdu ou quitté le niveau*/
              printf("Rejouer le même niveau ? (o/n) ");
-             int c=getchar();while(getchar()!='\n'); // lit la réponse
-             if (c=='o'||c=='o') continue; // rejoue
-             else break; // quitte
+             int c=getchar();while(getchar()!='\n'); // lit la réponse//
+             if (c=='o'||c=='o') continue; // rejoue//
+             else break; // quitte//
          }
 	}
 }
